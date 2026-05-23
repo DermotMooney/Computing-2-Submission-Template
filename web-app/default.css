@@ -1,0 +1,62 @@
+/* Reset basic margins and set a background color */
+body {
+    background-color: #faf8ef;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+#game-container {
+    width: 400px;
+}
+
+#header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 48px;
+    color: #776e65;
+    margin: 0;
+}
+
+#score-container {
+    background-color: #bbada0;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+
+#grid {
+    background-color: #bbada0;
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    /* This tells CSS to make 4 columns and 4 rows, all equal size */
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px; /* The space between tiles */
+    width: 400px;
+    height: 400px;
+    box-sizing: border-box;
+}
+
+.cell {
+    background-color: #cdc1b4;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: #776e65;
+}

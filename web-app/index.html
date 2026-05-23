@@ -7,3 +7,46 @@
 <link rel="stylesheet" href="default.css"> <!-- Import style sheet – default.css -->
 <link rel="icon" href="./assets/favicon.png"> <!-- Import 'Favorites Icon' – favicon.png -->
 <script type="module" src="main.js"></script> <!-- Load the main script. Must be type="module". Have only one of these -->
+
+<!doctype html> 
+<html lang="en-gb"> 
+    
+<head>
+    <meta charset="utf-8"> 
+    <title>2048 - Functional</title> 
+    <link rel="stylesheet" href="default.css"> 
+    <link rel="icon" href="./assets/favicon.png"> 
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <h1>2048</h1>
+            <div id="score-container">Score: <span id="score">0</span></div>
+        </div>
+
+        <div id="grid">
+            <div class="cell" id="c00"></div>
+            <div class="cell" id="c01"></div>
+            <div class="cell" id="c02"></div>
+            <div class="cell" id="c03"></div>
+            
+            <div class="cell" id="c10"></div>
+            <div class="cell" id="c11"></div>
+            <div class="cell" id="c12"></div>
+            <div class="cell" id="c13"></div>
+            
+            <div class="cell" id="c20"></div>
+            <div class="cell" id="c21"></div>
+            <div class="cell" id="c22"></div>
+            <div class="cell" id="c23"></div>
+            
+            <div class="cell" id="c30"></div>
+            <div class="cell" id="c31"></div>
+            <div class="cell" id="c32"></div>
+            <div class="cell" id="c33"></div>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script> 
+</body>
+</html>
