@@ -127,3 +127,45 @@ h1 {
 #keep-playing-button.hidden {
     display: none;
 }
+
+#tile-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Prevents tiles from blocking clicks */
+}
+
+.tile {
+    position: absolute;
+    width: 87.5px; /* Exactly matches your cell size (400px - padding - gaps) / 4 */
+    height: 87.5px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    font-weight: bold;
+    transition: translate 150ms ease-in-out; 
+}
+
+@keyframes phase-in {
+    0% { opacity: 0; transform: scale(0); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    75% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+.tile-new {
+    animation: phase-in 200ms ease forwards;
+}
+
+.tile-merged {
+    animation: pop 200ms ease-in-out forwards 150ms;
+}

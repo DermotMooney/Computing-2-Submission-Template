@@ -7,6 +7,7 @@ const overlay = document.getElementById('game-over-overlay');
 const title = document.getElementById('overlay-title');
 const keepPlayingBtn = document.getElementById('keep-playing-button');
 let current_score = 0
+let is_animating = false;
 
 /**
  * Creates the initial 4x4 grid filled with 0s 
@@ -41,8 +42,10 @@ const add_random_2_or_4 = (current_grid) => {
     const random_index = Math.floor(Math.random() * empty_cells.length);
     const { r: target_row, c: target_col } = empty_cells[random_index];
 
-    const new_value = Math.random() < 0.8 ? 2 : 4;
-    
+    const new_value = { 
+        id: Math.random().toString(36).substr(2, 9),
+        val: Math.random() < 0.8 ? 2 : 4
+    };
     return current_grid.map((row, r) => 
         row.map((cell, c) => 
             (r === target_row && c === target_col) ? new_value : cell
@@ -52,18 +55,70 @@ const add_random_2_or_4 = (current_grid) => {
 
 /**
  * renders the grid changes
- * @param {*} grid 
+ * @param {*} grid
  */
-
 const render_grid = (grid) => {
-    grid.forEach((row, row_index) =>
-        row.forEach((cell, cell_index) => {
-            const element = document.getElementById(`c${row_index}${cell_index}`);
-            element.textContent = cell === 0 ? "" : cell;
-            element.dataset.value = cell;
-        })
-    );
+    const container = document.getElementById('tile-container');
+    const active_ids = new Set();
+
+    grid.forEach((row, r) => {
+        row.forEach((cell, c) => {
+            if (cell !== 0) {
+                active_ids.add(cell.id);
+                const bg_cell = document.getElementById(`c${r}${c}`);
+                let el = document.getElementById(`tile-${cell.id}`);
+
+                const x = bg_cell.offsetLeft;
+                const y = bg_cell.offsetTop;
+                const pos = `${x}px ${y}px`;
+
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = `tile-${cell.id}`;
+                    el.className = 'tile tile-new';
+                    el.style.translate = pos;
+                    container.appendChild(el);
+                } else {
+                    el.style.translate = pos;
+                    el.classList.remove('tile-new', 'tile-merged');
+                    el.style.zIndex = "";
+                }
+
+                if (cell.merged_from) {
+                    const dead_id = `tile-${cell.merged_from}`;
+                    let dead_el = document.getElementById(dead_id);
+                    if (dead_el) {
+                        dead_el.style.translate = pos;
+                        dead_el.style.zIndex = 1;
+                    }
+
+                    void el.offsetWidth;
+                    el.classList.add('tile-merged');
+                    el.style.zIndex = 10;
+
+                    setTimeout(() => {
+                        el.textContent = cell.val;
+                        el.dataset.value = cell.val;
+                    }, 150);
+
+                    delete cell.merged_from;
+                } else {
+                    el.textContent = cell.val;
+                    el.dataset.value = cell.val;
+                }
+            }
+        });
+    });
+
+    Array.from(container.children).forEach(child => {
+        const id = child.id.replace('tile-', '');
+        if (!active_ids.has(id)) {
+            setTimeout(() => child.remove(), 150);
+        }
+    });
 };
+
+
 /**
  * Repeats the add tile function for the chosen number of starting tiles
  */
@@ -101,12 +156,15 @@ const update_score = (points) => {
 
 /**
  * Checks if there is any adjacent identical tiles in the row
- * @param {*} row 
- * @returns 
+ * @param {*} row
+ * @returns
  */
 const has_adjacent_duplicates = (row) => {
-    return row.some((val, index) => 
-        index < row.length - 1 && val !== 0 && val === row[index + 1]
+    return row.some((cell, index) => 
+        index < row.length - 1 && 
+        cell !== 0 && 
+        row[index + 1] !== 0 &&
+        cell.val === row[index + 1].val
     );
 };
 
@@ -114,7 +172,7 @@ const has_adjacent_duplicates = (row) => {
  * Checks if the array of empty cells is completely empty.
  */
 const is_grid_full = R.pipe(
-    get_empty_cells, 
+    get_empty_cells,
     R.isEmpty
 );
 /**
@@ -143,12 +201,27 @@ const slide_line = R.pipe(
 );
 
 /**
- * Slides the entire grid 
+ * Slides the entire grid
  */
 const slide_grid = R.map(slide_line);
 
+/**
+ * Checks if a pair contains a non 0, and a 0
+ */
+const is_slideable_gap = R.allPass([
+    R.pipe(R.head, R.equals(0)),
+    R.pipe(R.last, R.complement(R.equals(0)))
+]);
 
 
+/**
+ * checks for slideable gaps throughout that row/column
+ */
+const has_slideable_zero = R.pipe(
+    R.map(R.propOr(0, "val")),
+    R.aperture(2),
+    R.any(is_slideable_gap)
+);
 
 /**
  * Flips along the vertical axis
@@ -160,45 +233,70 @@ const mirror_along_vertical = R.map(R.reverse);
  * e.g., [2, 2, 4, 8] -> [4, 0, 4, 8], or [2,0,2,0] -> [4,0,0,0]
  */
 const merge_line = (line) => {
-    // Base case: if the array is empty, return it
     if (line.length === 0) return [];
     const current = line[0];
     const rest = line.slice(1);
-    // If the current element is 0, leave it alone and process the rest
+
     if (current === 0) {
         return [0, ...merge_line(rest)];
     }
-    // Find the index of the next non-zero number in the rest of the array
-    const nextIndex = rest.findIndex((num) => num !== 0);   
-    // If there are no more non-zero numbers, no further merges can happen
+
+    const nextIndex = rest.findIndex((num) => num !== 0);
     if (nextIndex === -1) {
         return [current, ...rest];
-    }   
+    }
+
     const nextNumber = rest[nextIndex];
-    // If the current number matches the next non-zero number, merge them
-    if (current === nextNumber) {
-      const merged_value = current * 2;
-      update_score(merged_value); // Add the new value to our total score!  
+    if (current.val === nextNumber.val) {
+      const merged_value = current.val * 2;
+      update_score(merged_value);
       return [
-          merged_value,
+          { id: current.id, val: merged_value, merged_from: nextNumber.id },
           ...rest.slice(0, nextIndex),
           0,
           ...merge_line(rest.slice(nextIndex + 1))
-          ];
-      }
-    // If they don't match, keep the current number and move forward recursively
+      ];
+    }
     return [current, ...merge_line(rest)];
 };
 
 /**
- * merges all rows left
+ * merges all rows left in the grid
  */
 const merge_grid = R.map(merge_line)
 
 /**
+ * checks if you can move a row left
+ */
+const can_move_row_left = R.anyPass([
+    has_adjacent_duplicates,
+    has_slideable_zero
+]);
+
+/**
+ * checks if the whole grid can slide left
+ */
+const check_left = R.any(can_move_row_left);
+
+/**
+ * checks if the whole grid can slide right
+ */
+const check_right = R.pipe(mirror_along_vertical, check_left);
+
+/**
+ * checks if the whole grid can slide up
+ */
+const check_up = R.pipe(R.transpose, check_left);
+
+/**
+ * checks if the whole grid can slide down
+ */
+const check_down = R.pipe(R.transpose, mirror_along_vertical, check_left);
+
+/**
  * Moves Left
- * @param {*} grid 
- * @returns 
+ * @param {*} grid
+ * @returns
  */
 const move_left = (grid) => R.pipe(
     slide_grid,
@@ -267,37 +365,61 @@ document.getElementById("retry-button").addEventListener("click", reset_game);
  */
 const has_won = R.pipe(
     R.flatten,
+    R.reject(R.equals(0)),
+    R.pluck("val"),
     R.includes(2048)
 );
 
 
+
 const handle_keypress = (event) => {
-    if (is_game_over(current_grid)) {
+    if (is_game_over(current_grid) || is_animating) {
         return;
     }
+    
+    // We point to your original move functions which handle their own rendering
     const key_actions = {
-        "ArrowLeft": move_left, "a": move_left, "A": move_left,
-        "ArrowRight": move_right, "d": move_right, "D": move_right,
-        "ArrowUp": move_up, "w": move_up, "W": move_up,
-        "ArrowDown": move_down, "s": move_down, "S": move_down
+        "ArrowLeft": { execute: move_left, check: check_left },
+        "a":         { execute: move_left, check: check_left },
+        "A":         { execute: move_left, check: check_left },
+        "ArrowRight":{ execute: move_right, check: check_right },
+        "d":         { execute: move_right, check: check_right },
+        "D":         { execute: move_right, check: check_right },
+        "ArrowUp":   { execute: move_up, check: check_up },
+        "w":         { execute: move_up, check: check_up },
+        "W":         { execute: move_up, check: check_up },
+        "ArrowDown": { execute: move_down, check: check_down },
+        "s":         { execute: move_down, check: check_down },
+        "S":         { execute: move_down, check: check_down }
     };
+
     const action = key_actions[event.key];
 
     if (action) {
         event.preventDefault();
-        current_grid = action(current_grid);
+        
+        if (action.check(current_grid)) {
+            
+            is_animating = true;
 
-        if (has_won(current_grid) && !has_continued) {
-            title.textContent = "You Win!";
-            overlay.style.background = "rgba(237, 194, 46, 0.73)";
-            keepPlayingBtn.classList.remove("hidden");
-            overlay.classList.remove("hidden");
-        }
-        else if (is_game_over(current_grid)) {
-            title.textContent = "Game Over!";
-            overlay.style.background = "rgba(238, 228, 218, 0.73)";
-            keepPlayingBtn.classList.add("hidden");
-            overlay.classList.remove("hidden");
+            current_grid = action.execute(current_grid);
+
+            setTimeout(() => {
+                is_animating = false;
+            }, 75);
+
+            if (has_won(current_grid) && !has_continued) {
+                title.textContent = "You Win!";
+                overlay.style.background = "rgba(237, 194, 46, 0.73)";
+                keepPlayingBtn.classList.remove("hidden");
+                overlay.classList.remove("hidden");
+            }
+            else if (is_game_over(current_grid)) {
+                title.textContent = "Game Over!";
+                overlay.style.background = "rgba(238, 228, 218, 0.73)";
+                keepPlayingBtn.classList.add("hidden");
+                overlay.classList.remove("hidden");
+            }
         }
     }
 };
@@ -308,7 +430,8 @@ document.addEventListener("keydown", handle_keypress);
  * Checks if the player wants to continue after winning
  */
 const continue_after_win = () => {
-    has_continued = true; // Set the flag so the overlay doesn't pop up again
+    has_continued = true;
     document.getElementById("game-over-overlay").classList.add("hidden");
 };
+
 document.getElementById("keep-playing-button").addEventListener("click", continue_after_win);
